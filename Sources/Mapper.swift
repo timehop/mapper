@@ -453,6 +453,36 @@ public struct Mapper {
                 return value
             }
         }
+    // MARK: - Timehop
+
+    /**
+     Get an array of Mappable values from the given field in the source data, dropping any items
+     in the array that fail to map
+
+     This allows you to transparently have nested arrays of Mappable values
+
+     - parameter field: The field to retrieve from the source data, can be an empty string to return the
+     entire data set
+
+     - throws: MapperError.missingFieldError if the field doesn't exist
+     - throws: MapperError.typeMismatchError if the field exists but isn't an array of NSDictionarys
+
+     - returns: The value for the given field, if it can be converted to the expected type [T]
+     */
+    public func failableFrom<T: Mappable>(_ field: String) throws -> [T] {
+        let value = try self.JSONFromField(field)
+        if let JSON = value as? [NSDictionary] {
+            return JSON.map { try? T(map: Mapper(JSON: $0)) }.flatMap { $0 }
+        }
+
+        throw MapperError.typeMismatchError(field: field, value: value, type: [NSDictionary].self)
+    }
+
+    // MARK: - Private
+
+    /**
+     Get the object for a given field. If an empty string is passed, return the entire data source. This
+     allows users to create objects from multiple fields in the top level of the data source
 
         return nil
     }
