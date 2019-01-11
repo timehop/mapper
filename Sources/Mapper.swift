@@ -436,7 +436,8 @@ public struct Mapper {
     /// - returns: The value of type T for the given field, if the transformation function doesn't throw
     ///            otherwise nil
     public func optionalFrom<T>(_ field: String, transformation: (Any) throws -> T?) -> T? {
-        return (try? transformation(try self.JSONFromField(field))).flatMap { $0 }
+        guard let json = try? self.JSONFromField(field) else { return nil }
+        return (try? transformation(json) ?? nil).flatMap { $0 } 
     }
 
     /// Get an optional typed value from the given fields by using the given transformation
@@ -453,6 +454,9 @@ public struct Mapper {
                 return value
             }
         }
+        return nil
+    }
+    
     // MARK: - Timehop
 
     /**
@@ -472,19 +476,10 @@ public struct Mapper {
     public func failableFrom<T: Mappable>(_ field: String) throws -> [T] {
         let value = try self.JSONFromField(field)
         if let JSON = value as? [NSDictionary] {
-            return JSON.map { try? T(map: Mapper(JSON: $0)) }.flatMap { $0 }
+            return JSON.compactMap { try? T(map: Mapper(JSON: $0)) }
         }
 
         throw MapperError.typeMismatchError(field: field, value: value, type: [NSDictionary].self)
-    }
-
-    // MARK: - Private
-
-    /**
-     Get the object for a given field. If an empty string is passed, return the entire data source. This
-     allows users to create objects from multiple fields in the top level of the data source
-
-        return nil
     }
 
     // MARK: - Private
